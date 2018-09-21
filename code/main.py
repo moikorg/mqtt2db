@@ -79,6 +79,16 @@ def on_message(client, userdata, message):
     #    print("received message = ",str(message.payload.decode("utf-8")))
 
 
+def on_connect(client, userdata, rc):
+    print("connecting reason  "  +str(rc))
+    client.disconnect_flag=False
+    client.connected_flag=True
+
+
+def on_disconnect(client, userdata, rc):
+    print("disconnecting reason  "  +str(rc))
+    client.connected_flag=False
+    client.disconnect_flag=True
 
 
 def main():
@@ -92,6 +102,8 @@ def main():
 
     #######Bind function to callback
     client.on_message = on_message
+    client.on_connect = on_connect
+    client.on_disconnect = on_disconnect
 
     print("connecting to broker ", broker)
     client.username_pw_set(configSectionMap(config, "MQTT")['username'], configSectionMap(config, "MQTT")['password'])
@@ -101,6 +113,7 @@ def main():
     except:
         print("ERROR: Can not connect to MQTT broker")
         return 1
+
     # create the DB connection and pass it to the callback function
     conn = connectDB(args.f)
 
@@ -116,9 +129,11 @@ def main():
                       ("tele/sensor/temperature", 0), ("tele/sensor/humidity", 0),
                       ("tele/sensor/temphum", 0)])
 
-    run = True
-    while run:
-        client.loop()
+
+
+
+    # the loop_forever cope also with reconnecting if needed
+    client.loop_forever()
 
 
 # this is the standard boilerplate that calls the main() function
