@@ -38,7 +38,7 @@ def parseTheArgs() -> object:
     parser.add_argument('-d', dest='verbose', action='store_true',
                         help='print debugging information')
     parser.add_argument('-f', help='path and filename of the config file, default is ./config.rc',
-                        default='./config.rc')
+                        default='/code/config.rc')
 
     args = parser.parse_args()
     return args
