@@ -7,4 +7,4 @@ services:
     # command: python3 sonosServer.py 
     volumes:
       - ./code:/code
-
+    restart: always

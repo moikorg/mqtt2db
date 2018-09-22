@@ -64,7 +64,7 @@ def callback_temp_or_hum(client, userdata, message):
 
     c = userdata.cursor()
     sql = "INSERT INTO temp_sensor (timestamp, topic, value) VALUES (FROM_UNIXTIME(%s), %s, %s);"
-    c.execute(sql, (datetime.datetime.now().timestamp(), message.topic, float(message.payload)))
+    c.execute(sql, (datetime.datetime.now(pytz.timezone('Europe/Berlin')).timestamp(), message.topic, float(message.payload)))
     userdata.commit()
 
 
@@ -97,8 +97,8 @@ def main():
     config.read(args.f)
 
     broker = configSectionMap(config, "MQTT")['host']
-    client = mqtt.Client(
-        "mqtt2db")  # create client object client1.on_publish = on_publish #assign function to callback client1.connect(broker,port) #establish connection client1.publish("house/bulb1","on")
+    client = mqtt.Client( "mqtt2db") 
+
 
     #######Bind function to callback
     client.on_message = on_message
