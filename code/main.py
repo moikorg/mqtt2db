@@ -50,12 +50,27 @@ def callback_json(client, userdata, message):
     print("Received JSON message '" + str(message.payload) + "' on topic '"
           + message.topic + "' with QoS " + str(message.qos))
 
-    parsed_json = json.loads(message.payload)
+    try:
+        parsed_json = json.loads(message.payload)
+    except:
+        print("ERROR: Can not parse JSON")
+        return 1
+
+    temp = parsed_json['temp']
+    hum = parsed_json['hum']
+    press = parsed_json['press']
+    timestamp = datetime.datetime.fromtimestamp(int(parsed_json['ts'])-7200).strftime('%Y-%m-%d %H:%M:%S')
+
+    print("Timestamp " + timestamp)
 
     c = userdata.cursor()
-    sql = "INSERT INTO temp_sensor (timestamp, topic, value) VALUES (FROM_UNIXTIME(%s), %s, %s);"
-    c.execute(sql, (parsed_json['ts'], 'sensor/json', parsed_json['temp']))
-    userdata.commit()
+    sql = """INSERT INTO meteo_sensor (ts, temperature, humidity, pressure) 
+              VALUES (%s, %s, %s, %s);"""
+    try:
+        c.execute(sql, (timestamp, temp, hum, press))
+        userdata.commit()
+    except Exception as e:
+        print("Error in SQL execution: " + str(e))
 
 
 # The  callback for the temp or hum data
@@ -70,20 +85,12 @@ def callback_temp_or_hum(client, userdata, message):
 
 
 
-
-
 # The collector callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, message):
     print("Received garbage collector message '" + str(message.payload) + "' on topic '"
           + message.topic + "' with QoS " + str(message.qos))
     #    print("topic = ", str(message.topic))
     #    print("received message = ",str(message.payload.decode("utf-8")))
-
-
-def on_connect(client, userdata, rc):
-    print("connecting reason  "  +str(rc))
-    client.disconnect_flag=False
-    client.connected_flag=True
 
 
 def on_disconnect(client, userdata, rc):
@@ -103,12 +110,10 @@ def main():
 
     #######Bind function to callback
     client.on_message = on_message
-    client.on_connect = on_connect
     client.on_disconnect = on_disconnect
 
     print("connecting to broker ", broker)
     client.username_pw_set(configSectionMap(config, "MQTT")['username'], configSectionMap(config, "MQTT")['password'])
-    # todo: try catch .... if the broker can not be connected
     try:
         client.connect(broker)
     except:
@@ -122,16 +127,12 @@ def main():
 
     # subscribe
     print("subscribing ")
-    # client.subscribe("#")   #subscribe
-    client.message_callback_add("tele/sensor/temphum",callback_json)
+
+    client.subscribe([("sensor/temperature", 0), ("sensor/humidity", 0),
+                      ("sensor/+/temphum", 0)])
+    client.message_callback_add("sensor/+/temphum",callback_json)
     client.message_callback_add("sensor/humidity",callback_temp_or_hum)
     client.message_callback_add("sensor/temperature",callback_temp_or_hum)
-    client.subscribe([("sensor/temperature", 0), ("sensor/humidity", 0),
-                      ("tele/sensor/temperature", 0), ("tele/sensor/humidity", 0),
-                      ("tele/sensor/temphum", 0)])
-
-
-
 
     # the loop_forever cope also with reconnecting if needed
     client.loop_forever()
