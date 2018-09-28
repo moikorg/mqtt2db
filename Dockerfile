@@ -14,6 +14,10 @@ run apk add py3-sqlalchemy
 
 RUN rm -rf /var/cache/apk/*
 
+# next two lines sets the timezone correctly
+RUN apk add --no-cache tzdata
+ENV TZ Europe/Zurich
+
 RUN mkdir /code
 WORKDIR /code
 ADD code/requirements.txt /code/
