@@ -5,6 +5,7 @@ import pymysql
 import datetime
 import pytz
 import json
+import re
 
 
 def configSectionMap(config, section):
@@ -61,13 +62,23 @@ def callback_json(client, userdata, message):
     press = parsed_json['press']
     timestamp = datetime.datetime.fromtimestamp(int(parsed_json['ts'])-7200).strftime('%Y-%m-%d %H:%M:%S')
 
+    matchObj = re.match(r'sensor\/(.*?)\/temphum', message.topic)
+    print("Sensor ID: "+matchObj.group(1))
+
     print("Timestamp " + timestamp)
 
-    c = userdata.cursor()
-    sql = """INSERT INTO meteo_sensor (ts, temperature, humidity, pressure) 
-              VALUES (%s, %s, %s, %s);"""
+    # check DB connection
     try:
-        c.execute(sql, (timestamp, temp, hum, press))
+        userdata.ping(reconnect=True)
+    except Exception as e:
+        print("Connection lost, reconnect FAILED")
+        return 1
+
+    c = userdata.cursor()
+    sql = """INSERT INTO meteo_sensor (ts, temperature, humidity, pressure, sensor_id) 
+              VALUES (%s, %s, %s, %s, %s);"""
+    try:
+        c.execute(sql, (timestamp, temp, hum, press, matchObj.group(1)))
         userdata.commit()
     except Exception as e:
         print("Error in SQL execution: " + str(e))
@@ -105,7 +116,7 @@ def main():
     config.read(args.f)
 
     broker = configSectionMap(config, "MQTT")['host']
-    client = mqtt.Client( "mqtt2db") 
+    client = mqtt.Client(configSectionMap(config, "MQTT")['client'])
 
 
     #######Bind function to callback
