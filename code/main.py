@@ -75,7 +75,7 @@ def callback_json(client, userdata, message):
         return 1
 
     c = userdata.cursor()
-    sql = """INSERT INTO meteo_sensor (ts, temperature, humidity, pressure, sensor_id) 
+    sql = """INSERT IGNORE INTO meteo_sensor (ts, temperature, humidity, pressure, sensor_id) 
               VALUES (%s, %s, %s, %s, %s);"""
     try:
         c.execute(sql, (timestamp, temp, hum, press, matchObj.group(1)))
