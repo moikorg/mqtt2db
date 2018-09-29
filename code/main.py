@@ -57,15 +57,15 @@ def callback_json(client, userdata, message):
         print("ERROR: Can not parse JSON")
         return 1
 
-    temp = parsed_json['temp']
-    hum = parsed_json['hum']
-    press = parsed_json['press']
+    temp = round(float(parsed_json['temp']), 1)
+    hum = round(float(parsed_json['hum']), 1)
+    press = round(float(parsed_json['press']), 1)
     timestamp = datetime.datetime.fromtimestamp(int(parsed_json['ts'])-7200).strftime('%Y-%m-%d %H:%M:%S')
 
     matchObj = re.match(r'sensor\/(.*?)\/temphum', message.topic)
-    print("Sensor ID: "+matchObj.group(1))
 
     print("Timestamp " + timestamp)
+    print("Sensor ID: "+matchObj.group(1))
 
     # check DB connection
     try:
