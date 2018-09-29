@@ -1,0 +1,14 @@
+[Credentials]
+username = root
+password = LSfh3S49iLTTsJr9x2DT
+
+[DB]
+db = mqtt
+host = docker.moik.org
+port = 3306
+
+[MQTT]
+host = docker.moik.org
+username = wemos_sensor
+password = ***REMOVED***
+client = wemos_sensor_1
