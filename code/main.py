@@ -60,7 +60,7 @@ def callback_json(client, userdata, message):
     temp = round(float(parsed_json['temp']), 1)
     hum = round(float(parsed_json['hum']), 1)
     press = round(float(parsed_json['press']), 1)
-    timestamp = datetime.datetime.fromtimestamp(int(parsed_json['ts'])-7200).strftime('%Y-%m-%d %H:%M:%S')
+    timestamp = datetime.datetime.fromtimestamp(int(parsed_json['ts'])).strftime('%Y-%m-%d %H:%M:%S')
 
     matchObj = re.match(r'sensor\/(.*?)\/temphum', message.topic)
 
