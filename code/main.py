@@ -61,6 +61,8 @@ def callback_json(client, userdata, message):
     hum = round(float(parsed_json['hum']), 1)
     press = round(float(parsed_json['press']), 1)
     timestamp = datetime.datetime.fromtimestamp(int(parsed_json['ts'])).strftime('%Y-%m-%d %H:%M:%S')
+    timestamp_epoch = int(parsed_json['ts'])
+
 
     matchObj = re.match(r'sensor\/(.*?)\/temphum', message.topic)
 
@@ -75,10 +77,10 @@ def callback_json(client, userdata, message):
         return 1
 
     c = userdata.cursor()
-    sql = """INSERT IGNORE INTO meteo_sensor (ts, temperature, humidity, pressure, sensor_id) 
-              VALUES (%s, %s, %s, %s, %s);"""
+    sql = """INSERT IGNORE INTO meteo_sensor (ts, ts_epoch, temperature, humidity, pressure, sensor_id) 
+              VALUES (%s, %s, %s, %s, %s, %s);"""
     try:
-        c.execute(sql, (timestamp, temp, hum, press, matchObj.group(1)))
+        c.execute(sql, (timestamp, timestamp_epoch, temp, hum, press, matchObj.group(1)))
         userdata.commit()
     except Exception as e:
         print("Error in SQL execution: " + str(e))
