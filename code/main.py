@@ -48,8 +48,8 @@ def parseTheArgs() -> object:
 
 # The  callback for the JSON format data
 def callback_json(client, userdata, message):
-    print("Received JSON message '" + str(message.payload) + "' on topic '"
-          + message.topic + "' with QoS " + str(message.qos))
+    #print("Received JSON message '" + str(message.payload) + "' on topic '"
+    #      + message.topic + "' with QoS " + str(message.qos))
 
     try:
         parsed_json = json.loads(message.payload)
@@ -88,14 +88,14 @@ def callback_json(client, userdata, message):
 
 # The  callback for the temp or hum data
 def callback_temp_or_hum(client, userdata, message):
-    print("Received direct message @" + str(datetime.datetime.now()) + " : " + str(message.payload) + " on topic '"
-          + message.topic + "' with QoS " + str(message.qos), " --> write to DB")
+    #print("Received direct message @" + str(datetime.datetime.now()) + " : " + str(message.payload) + " on topic '"
+    #      + message.topic + "' with QoS " + str(message.qos), " --> write to DB")
 
-    c = userdata.cursor()
-    sql = "INSERT INTO temp_sensor (timestamp, topic, value) VALUES (FROM_UNIXTIME(%s), %s, %s);"
-    c.execute(sql, (datetime.datetime.now(pytz.timezone('Europe/Berlin')).timestamp(), message.topic, float(message.payload)))
-    userdata.commit()
-
+#    c = userdata.cursor()
+#    sql = "INSERT INTO temp_sensor (timestamp, topic, value) VALUES (FROM_UNIXTIME(%s), %s, %s);"
+#    c.execute(sql, (datetime.datetime.now(pytz.timezone('Europe/Berlin')).timestamp(), message.topic, float(message.payload)))
+#    userdata.commit()
+    print("Error, got a obsolete MQTT message, for a DB table that doesn't exists anymore")
 
 
 # The collector callback for when a PUBLISH message is received from the server.
@@ -147,6 +147,7 @@ def main():
     client.message_callback_add("sensor/humidity",callback_temp_or_hum)
     client.message_callback_add("sensor/temperature",callback_temp_or_hum)
 
+    print("subscribed")
     # the loop_forever cope also with reconnecting if needed
     client.loop_forever()
 
