@@ -3,10 +3,9 @@ import argparse
 import configparser
 import pymysql
 import datetime
-import pytz
 import json
-import re
 
+mqtt_received_data = ()
 
 def configSectionMap(config, section):
     dict1 = {}
@@ -46,13 +45,29 @@ def parseTheArgs() -> object:
     return args
 
 
-# The  callback for the JSON format data
-def callback_json(client, userdata, message):
-    #print("Received JSON message '" + str(message.payload) + "' on topic '"
-    #      + message.topic + "' with QoS " + str(message.qos))
+def on_disconnect(client, userdata, rc):
+    print("disconnecting reason  " + str(rc))
+    print(userdata)
+    print(client)
+    client.connected_flag=False
+    client.disconnect_flag=True
+
+
+# The callback for when the client receives a CONNACK response from the server.
+def on_connect(client, userdata, flags, rc):
+    print("Connected with result code "+str(rc))
+    # Subscribing in on_connect() means that if we lose the connection and
+    # reconnect then subscriptions will be renewed.
+   #client.subscribe("$SYS/#")
+    client.subscribe("sensor/meteo/1")
+
+
+# The callback for when a PUBLISH message is received from the server.
+def on_message(client, userdata, msg):
+    print(msg.topic+" "+str(msg.payload))
 
     try:
-        parsed_json = json.loads(message.payload)
+        parsed_json = json.loads(msg.payload)
     except:
         print("ERROR: Can not parse JSON")
         return 1
@@ -62,13 +77,7 @@ def callback_json(client, userdata, message):
     press = round(float(parsed_json['press']), 1)
     timestamp = datetime.datetime.fromtimestamp(int(parsed_json['ts'])).strftime('%Y-%m-%d %H:%M:%S')
     timestamp_epoch = int(parsed_json['ts'])
-
-
-    matchObj = re.match(r'sensor\/(.*?)\/temphum', message.topic)
-
-    print("Timestamp " + timestamp)
-    print("Sensor ID: "+matchObj.group(1))
-
+    sensor_ID = 1
     # check DB connection
     try:
         userdata.ping(reconnect=True)
@@ -80,36 +89,11 @@ def callback_json(client, userdata, message):
     sql = """INSERT IGNORE INTO meteo_sensor (ts, ts_epoch, temperature, humidity, pressure, sensor_id) 
               VALUES (%s, %s, %s, %s, %s, %s);"""
     try:
-        c.execute(sql, (timestamp, timestamp_epoch, temp, hum, press, matchObj.group(1)))
+        c.execute(sql, (timestamp, timestamp_epoch, temp, hum, press, sensor_ID))
         userdata.commit()
     except Exception as e:
         print("Error in SQL execution: " + str(e))
 
-
-# The  callback for the temp or hum data
-def callback_temp_or_hum(client, userdata, message):
-    #print("Received direct message @" + str(datetime.datetime.now()) + " : " + str(message.payload) + " on topic '"
-    #      + message.topic + "' with QoS " + str(message.qos), " --> write to DB")
-
-#    c = userdata.cursor()
-#    sql = "INSERT INTO temp_sensor (timestamp, topic, value) VALUES (FROM_UNIXTIME(%s), %s, %s);"
-#    c.execute(sql, (datetime.datetime.now(pytz.timezone('Europe/Berlin')).timestamp(), message.topic, float(message.payload)))
-#    userdata.commit()
-    print("Error, got a obsolete MQTT message, for a DB table that doesn't exists anymore")
-
-
-# The collector callback for when a PUBLISH message is received from the server.
-def on_message(client, userdata, message):
-    print("Received garbage collector message '" + str(message.payload) + "' on topic '"
-          + message.topic + "' with QoS " + str(message.qos))
-    #    print("topic = ", str(message.topic))
-    #    print("received message = ",str(message.payload.decode("utf-8")))
-
-
-def on_disconnect(client, userdata, rc):
-    print("disconnecting reason  "  +str(rc))
-    client.connected_flag=False
-    client.disconnect_flag=True
 
 
 def main():
@@ -118,36 +102,27 @@ def main():
     config.read(args.f)
 
     broker = configSectionMap(config, "MQTT")['host']
-    client = mqtt.Client(configSectionMap(config, "MQTT")['client'])
 
-
-    #######Bind function to callback
+    client = mqtt.Client()
+    client.on_connect = on_connect
     client.on_message = on_message
     client.on_disconnect = on_disconnect
 
-    print("connecting to broker ", broker)
-    client.username_pw_set(configSectionMap(config, "MQTT")['username'], configSectionMap(config, "MQTT")['password'])
+    client.username_pw_set(username=configSectionMap(config, "MQTT")['username'],
+                           password= configSectionMap(config, "MQTT")['password'])
+
     try:
-        client.connect(broker)
+        client.connect(broker, 1883, 600)
     except:
         print("ERROR: Can not connect to MQTT broker")
         return 1
 
+    print("subscribed")
+
     # create the DB connection and pass it to the callback function
     conn = connectDB(args.f)
-
     client.user_data_set(conn)
 
-    # subscribe
-    print("subscribing ")
-
-    client.subscribe([("sensor/temperature", 0), ("sensor/humidity", 0),
-                      ("sensor/+/temphum", 0)])
-    client.message_callback_add("sensor/+/temphum",callback_json)
-    client.message_callback_add("sensor/humidity",callback_temp_or_hum)
-    client.message_callback_add("sensor/temperature",callback_temp_or_hum)
-
-    print("subscribed")
     # the loop_forever cope also with reconnecting if needed
     client.loop_forever()
 
