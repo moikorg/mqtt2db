@@ -2,7 +2,6 @@ import paho.mqtt.client as mqtt
 import argparse
 import configparser
 import pymysql
-import datetime
 import json
 
 mqtt_received_data = ()
@@ -59,7 +58,8 @@ def on_connect(client, userdata, flags, rc):
     # Subscribing in on_connect() means that if we lose the connection and
     # reconnect then subscriptions will be renewed.
    #client.subscribe("$SYS/#")
-    client.subscribe("sensor/meteo/1")
+    client.subscribe("tele/meteo_winecellar/SENSOR")
+    #client.subscribe("sensor/meteo/1")
 
 
 # The callback for when a PUBLISH message is received from the server.
@@ -72,12 +72,12 @@ def on_message(client, userdata, msg):
         print("ERROR: Can not parse JSON")
         return 1
 
-    temp = round(float(parsed_json['temp']), 1)
-    hum = round(float(parsed_json['hum']), 1)
-    press = round(float(parsed_json['press']), 1)
-    timestamp = datetime.datetime.fromtimestamp(int(parsed_json['ts'])).strftime('%Y-%m-%d %H:%M:%S')
-    timestamp_epoch = int(parsed_json['ts'])
-    sensor_ID = 1
+    temp = round(float(parsed_json['SHT3X']['Temperature']), 1)
+    hum = round(float(parsed_json['SHT3X']['Humidity']), 1)
+    dew = round(float(parsed_json['SHT3X']['DewPoint']), 1)
+    timestamp = parsed_json['Time']
+    timestamp_epoch = parsed_json['Epoch']
+
     # check DB connection
     try:
         userdata.ping(reconnect=True)
@@ -86,10 +86,10 @@ def on_message(client, userdata, msg):
         return 1
 
     c = userdata.cursor()
-    sql = """INSERT IGNORE INTO meteo_sensor (ts, ts_epoch, temperature, humidity, pressure, sensor_id) 
+    sql = """INSERT IGNORE INTO meteo_sensor (ts, ts_epoch, temperature, humidity, dewpoint, sensor_id) 
               VALUES (%s, %s, %s, %s, %s, %s);"""
     try:
-        c.execute(sql, (timestamp, timestamp_epoch, temp, hum, press, sensor_ID))
+        c.execute(sql, (timestamp, timestamp_epoch, temp, hum, dew, 1))
         userdata.commit()
     except Exception as e:
         print("Error in SQL execution: " + str(e))
